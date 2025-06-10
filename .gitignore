@@ -1,0 +1,27 @@
+frontend/node_modules
+frontend/node_modules
+backend/__pycache__
+images
+labels
+test.txt
+train.txt
+val.txt
+backend/best_model.pth
+backend/latest_checkpoint.pth
+
+# Node.js (React frontend)
+frontend/node_modules/
+frontend/build/
+frontend/.env
+backend/venv
+# Python (FastAPI backend)
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/venv/
+backend/*.pkl
+backend/*.pth
+
+# System files
+.DS_Store
+*.log
