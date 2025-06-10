@@ -10,6 +10,7 @@ backend/best_model.pth
 backend/latest_checkpoint.pth
 
 # Node.js (React frontend)
+frontend/package-lock.json
 frontend/node_modules/
 frontend/build/
 frontend/.env
