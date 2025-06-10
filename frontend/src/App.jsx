@@ -6,6 +6,7 @@ import Header from './components/layout/Header';
 import Dashboard from './components/dashboard/Dashboard';
 import UploadSection from './components/upload/UploadSection';
 import Analytics from './components/analytics/Analytics';
+import Settings from './components/settings/Settings';
 import Moderation from './components/moderation/Moderation';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import { useAPI } from './hooks/useAPI';
@@ -52,6 +53,7 @@ const VidIntelPro = () => {
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="/dashboard" element={<Dashboard platformStats={platformStats} />} />
             <Route path="/upload" element={<UploadSection />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/analytics" element={<Analytics platformStats={platformStats} />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="*" element={<h2>404 - Page not found</h2>} />

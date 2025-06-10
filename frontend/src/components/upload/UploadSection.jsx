@@ -125,9 +125,19 @@ const UploadSection = () => {
                   </div>
                   
                   <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">
-                      {analysisResult.sentiment_analysis?.label || 'N/A'}
-                    </p>
+                    <Badge
+                        variant={
+                            analysisResult.sentiment_analysis?.label === 'Positive'
+                            ? 'success'
+                            : analysisResult.sentiment_analysis?.label === 'Negative'
+                            ? 'danger'
+                            : 'info'
+                        }
+                        size="lg"
+                        >
+                        {analysisResult.sentiment_analysis?.label || 'N/A'}
+                    </Badge>
+
                     <p className="text-sm text-green-600">Sentiment</p>
                   </div>
                 </div>
