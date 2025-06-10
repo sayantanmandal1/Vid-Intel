@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+// VidIntelPro.jsx
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import Header from './components/layout/Header';
 import Dashboard from './components/dashboard/Dashboard';
 import UploadSection from './components/upload/UploadSection';
@@ -8,7 +11,6 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 import { useAPI } from './hooks/useAPI';
 
 const VidIntelPro = () => {
-  const [activeView, setActiveView] = useState('dashboard');
   const [platformStats, setPlatformStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const api = useAPI();
@@ -30,21 +32,6 @@ const VidIntelPro = () => {
     loadPlatformStats();
   }, [api]);
 
-  const renderActiveView = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return <Dashboard platformStats={platformStats} />;
-      case 'upload':
-        return <UploadSection />;
-      case 'analytics':
-        return <Analytics platformStats={platformStats} />;
-      case 'moderation':
-        return <Moderation />;
-      default:
-        return <Dashboard platformStats={platformStats} />;
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -57,12 +44,21 @@ const VidIntelPro = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header activeView={activeView} onViewChange={setActiveView} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderActiveView()}
-      </main>
-    </div>
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/dashboard" element={<Dashboard platformStats={platformStats} />} />
+            <Route path="/upload" element={<UploadSection />} />
+            <Route path="/analytics" element={<Analytics platformStats={platformStats} />} />
+            <Route path="/moderation" element={<Moderation />} />
+            <Route path="*" element={<h2>404 - Page not found</h2>} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 };
 
