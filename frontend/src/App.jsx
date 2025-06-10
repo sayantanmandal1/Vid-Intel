@@ -10,6 +10,7 @@ import Settings from './components/settings/Settings';
 import Moderation from './components/moderation/Moderation';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import { useAPI } from './hooks/useAPI';
+import { Notifications } from './components';
 
 const VidIntelPro = () => {
   const [platformStats, setPlatformStats] = useState(null);
@@ -54,6 +55,7 @@ const VidIntelPro = () => {
             <Route path="/dashboard" element={<Dashboard platformStats={platformStats} />} />
             <Route path="/upload" element={<UploadSection />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/analytics" element={<Analytics platformStats={platformStats} />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="*" element={<h2>404 - Page not found</h2>} />
