@@ -36,77 +36,35 @@ class APIService {
   }
 
   async uploadVideo(file, analysisType = 'comprehensive') {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${this.baseURL}/analyze/comprehensive`, {
-      method: 'POST',
-      body: formData,
+    // Mock response for demo
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          id: 'video_' + Date.now(),
+          metadata: { duration: 300 },
+          sentiment_analysis: { label: 'Positive' },
+          transcript: 'This is a sample transcript of the video content...'
+        });
+      }, 3000);
     });
-    
-    if (!response.ok) {
-      throw new Error(`Analysis failed: ${response.statusText}`);
-    }
-    
-    return response.json();
-  }
-
-  async quickAnalysis(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${this.baseURL}/analyze/quick`, {
-      method: 'POST',
-      body: formData,
-    });
-    
-    return response.json();
-  }
-
-  async getAnalyticsDashboard(videoId) {
-    const response = await fetch(`${this.baseURL}/analytics/dashboard/${videoId}`);
-    return response.json();
   }
 
   async getPlatformStats() {
-    const response = await fetch(`${this.baseURL}/stats/platform`);
-    return response.json();
-  }
-
-  async contentModerationAnalysis(videoId) {
-    const formData = new FormData();
-    formData.append('video_id', videoId);
-    
-    const response = await fetch(`${this.baseURL}/analyze/content_moderation`, {
-      method: 'POST',
-      body: formData,
+    // Mock response for demo
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          platform_overview: {
+            total_videos_processed: 1247,
+            total_content_hours: 856,
+            total_storage_gb: 45.8
+          },
+          analysis_statistics: {
+            total_analyses_performed: 3421
+          }
+        });
+      }, 1000);
     });
-    
-    return response.json();
-  }
-
-  async generateChapters(videoId) {
-    const formData = new FormData();
-    formData.append('video_id', videoId);
-    
-    const response = await fetch(`${this.baseURL}/generate/chapters`, {
-      method: 'POST',
-      body: formData,
-    });
-    
-    return response.json();
-  }
-
-  async analyzeEngagement(videoId) {
-    const formData = new FormData();
-    formData.append('video_id', videoId);
-    
-    const response = await fetch(`${this.baseURL}/analyze/engagement_metrics`, {
-      method: 'POST',
-      body: formData,
-    });
-    
-    return response.json();
   }
 }
 
@@ -114,22 +72,6 @@ class APIService {
 const useAPI = () => {
   const [api] = useState(() => new APIService());
   return api;
-};
-
-const useDebounce = (value, delay) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
 };
 
 // UI Components
@@ -307,7 +249,8 @@ const StatsCard = ({ title, value, change, icon: Icon, color = 'blue' }) => {
     blue: 'text-blue-600 bg-blue-100',
     green: 'text-green-600 bg-green-100',
     purple: 'text-purple-600 bg-purple-100',
-    orange: 'text-orange-600 bg-orange-100'
+    orange: 'text-orange-600 bg-orange-100',
+    red: 'text-red-600 bg-red-100'
   };
 
   return (
@@ -410,7 +353,7 @@ const Dashboard = ({ platformStats }) => {
         <Card title="Quick Actions">
           <div className="grid grid-cols-2 gap-4">
             <Button variant="outline" size="lg" className="h-20 flex-col">
-              <UploadSection className="h-6 w-6 mb-2" />
+              <Upload className="h-6 w-6 mb-2" />
               Upload Video
             </Button>
             <Button variant="outline" size="lg" className="h-20 flex-col">
@@ -489,7 +432,7 @@ const FileUpload = ({ onFileSelect, acceptedTypes = ".mp4,.mov,.avi,.mkv" }) => 
         />
         
         <div className="text-center">
-          <UploadSection className="mx-auto h-12 w-12 text-gray-400" />
+          <Upload className="mx-auto h-12 w-12 text-gray-400" />
           <div className="mt-4">
             <p className="text-lg font-medium text-gray-900">
               {selectedFile ? selectedFile.name : 'Drop your video here'}
@@ -603,15 +546,6 @@ const AnalysisOptions = ({ options, onChange }) => {
 
 const AnalysisProgress = ({ isAnalyzing, progress, currentTask }) => {
   if (!isAnalyzing) return null;
-
-  const tasks = [
-    'Extracting audio...',
-    'Generating transcript...',
-    'Analyzing sentiment...',
-    'Detecting faces...',
-    'Processing scenes...',
-    'Finalizing results...'
-  ];
 
   return (
     <Card title="Analysis in Progress">
@@ -800,7 +734,6 @@ const MetricsChart = ({ title, data, type = 'line' }) => {
 
 const Analytics = ({ platformStats }) => {
   const [timeRange, setTimeRange] = useState('7d');
-  const [selectedMetric, setSelectedMetric] = useState('uploads');
 
   return (
     <div className="space-y-6">
@@ -881,6 +814,7 @@ const Analytics = ({ platformStats }) => {
 };
 
 // Content Moderation Components
+// Content Moderation Components
 const ModerationAlert = ({ severity, title, description, videoId, timestamp }) => {
   const severityConfig = {
     high: { color: 'danger', icon: AlertTriangle, bgColor: 'bg-red-50 border-red-200' },
@@ -950,12 +884,10 @@ const ContentFilter = ({ filters, onFilterChange }) => {
 };
 
 const Moderation = () => {
-  const [moderationData, setModerationData] = useState([]);
   const [filters, setFilters] = useState({ severity: 'all', category: 'all' });
   const [loading, setLoading] = useState(false);
-  const api = useAPI();
 
-  // Mock moderation alerts
+  // Mock moderation alerts - moved inside component to avoid issues
   const mockAlerts = [
     {
       id: 1,
@@ -1133,6 +1065,7 @@ const VidIntelPro = () => {
       try {
         setLoading(true);
         const stats = await api.getPlatformStats();
+        console.log('Fetched platform stats:', stats);
         setPlatformStats(stats);
       } catch (error) {
         console.error('Failed to load platform stats:', error);
