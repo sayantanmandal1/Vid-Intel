@@ -4,8 +4,10 @@ import StatsCard from './StatsCard';
 import RecentActivity from './RecentActivity';
 import Card from '../common/Card';
 import Button from '../common/Button';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = ({ platformStats }) => {
+  const navigate = useNavigate(); 
   const stats = [
     {
       title: 'Total Videos',
@@ -56,24 +58,47 @@ const Dashboard = ({ platformStats }) => {
         <RecentActivity activities={recentActivities} />
         
         <Card title="Quick Actions">
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" size="lg" className="h-20 flex-col">
-              <Upload className="h-6 w-6 mb-2" />
-              Upload Video
-            </Button>
-            <Button variant="outline" size="lg" className="h-20 flex-col">
-              <BarChart3 className="h-6 w-6 mb-2" />
-              View Analytics
-            </Button>
-            <Button variant="outline" size="lg" className="h-20 flex-col">
-              <Shield className="h-6 w-6 mb-2" />
-              Moderation
-            </Button>
-            <Button variant="outline" size="lg" className="h-20 flex-col">
-              <Search className="h-6 w-6 mb-2" />
-              Search Videos
-            </Button>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+                <Button
+                variant="outline"
+                size="lg"
+                className="h-20 flex-col"
+                onClick={() => navigate('/upload')}
+                >
+                <Upload className="h-6 w-6 mb-2" />
+                Upload Video
+                </Button>
+
+                <Button
+                variant="outline"
+                size="lg"
+                className="h-20 flex-col"
+                onClick={() => navigate('/analytics')}
+                >
+                <BarChart3 className="h-6 w-6 mb-2" />
+                View Analytics
+                </Button>
+
+                <Button
+                variant="outline"
+                size="lg"
+                className="h-20 flex-col"
+                onClick={() => navigate('/moderation')}
+                >
+                <Shield className="h-6 w-6 mb-2" />
+                Moderation
+                </Button>
+
+                <Button
+                variant="outline"
+                size="lg"
+                className="h-20 flex-col"
+                onClick={() => navigate('/search')}
+                >
+                <Search className="h-6 w-6 mb-2" />
+                Search Videos
+                </Button>
+            </div>
         </Card>
       </div>
     </div>
