@@ -4,7 +4,7 @@ import Button from '../common/Button';
 
 const FileUpload = ({ onFileSelect, acceptedTypes = ".mp4,.mov,.avi,.mkv" }) => {
   const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -21,19 +21,19 @@ const FileUpload = ({ onFileSelect, acceptedTypes = ".mp4,.mov,.avi,.mkv" }) => 
     e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setSelectedFile(file);
-      onFileSelect(file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const filesArray = Array.from(e.dataTransfer.files);
+      setSelectedFiles(filesArray);
+      onFileSelect(filesArray);
     }
   }, [onFileSelect]);
 
   const handleChange = useCallback((e) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      onFileSelect(file);
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles(filesArray);
+      onFileSelect(filesArray);
     }
   }, [onFileSelect]);
 
@@ -53,6 +53,7 @@ const FileUpload = ({ onFileSelect, acceptedTypes = ".mp4,.mov,.avi,.mkv" }) => 
         <input
           type="file"
           accept={acceptedTypes}
+          multiple
           onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
@@ -61,44 +62,54 @@ const FileUpload = ({ onFileSelect, acceptedTypes = ".mp4,.mov,.avi,.mkv" }) => 
           <Upload className="mx-auto h-12 w-12 text-gray-400" />
           <div className="mt-4">
             <p className="text-lg font-medium text-gray-900">
-              {selectedFile ? selectedFile.name : 'Drop your video here'}
+              {selectedFiles.length > 0
+                ? `${selectedFiles.length} file(s) selected`
+                : 'Drop your videos here'}
             </p>
             <p className="text-sm text-gray-500">
               or click to browse files
             </p>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Supports MP4, MOV, AVI, MKV (max 500MB)
+            Supports MP4, MOV, AVI, MKV (max 500MB each)
           </p>
         </div>
       </div>
-      
-      {selectedFile && (
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Video className="h-5 w-5 text-blue-600 mr-2" />
-              <div>
-                <p className="text-sm font-medium text-blue-900">{selectedFile.name}</p>
-                <p className="text-xs text-blue-600">
-                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSelectedFile(null);
-                onFileSelect(null);
-              }}
+
+      {selectedFiles.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {selectedFiles.map((file, index) => (
+            <div
+              key={index}
+              className="p-4 bg-blue-50 rounded-lg flex items-center justify-between"
             >
-              Remove
-            </Button>
-          </div>
+              <div className="flex items-center">
+                <Video className="h-5 w-5 text-blue-600 mr-2" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">{file.name}</p>
+                  <p className="text-xs text-blue-600">
+                    {(file.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const updated = [...selectedFiles];
+                  updated.splice(index, 1);
+                  setSelectedFiles(updated);
+                  onFileSelect(updated);
+                }}
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 };
-export default FileUpload
+
+export default FileUpload;

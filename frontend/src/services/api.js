@@ -3,47 +3,64 @@ class APIService {
     this.baseURL = baseURL;
   }
 
-  async uploadVideo(file, analysisType = 'comprehensive') {
-    // Mock response for demo
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          id: 'video_' + Date.now(),
-          metadata: { duration: 300 },
-          sentiment_analysis: { label: 'Positive' },
-          transcript: 'This is a sample transcript of the video content...'
-        });
-      }, 3000);
+  async comprehensiveAnalysis(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseURL}/analyze/comprehensive`, {
+      method: 'POST',
+      body: formData
     });
+
+    return response.json();
   }
 
-  async getPlatformStats() {
-    // Mock response for demo
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          platform_overview: {
-            total_videos_processed: 1247,
-            total_content_hours: 856,
-            total_storage_gb: 45.8
-          },
-          analysis_statistics: {
-            total_analyses_performed: 3421
-          }
-        });
-      }, 1000);
+  async quickAnalysis(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseURL}/analyze/quick`, {
+      method: 'POST',
+      body: formData
     });
+
+    return response.json();
   }
 
-  async batchAnalyze(files) {
+  async contentModeration(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseURL}/analyze/content_moderation`, {
+      method: 'POST',
+      body: formData
+    });
+
+    return response.json();
+  }
+
+  async engagementAnalysis(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseURL}/analyze/engagement_metrics`, {
+      method: 'POST',
+      body: formData
+    });
+
+    return response.json();
+  }
+
+  async batchAnalyze(files, analysisType = 'quick') {
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
-    
+    formData.append('analysis_type', analysisType);
+
     const response = await fetch(`${this.baseURL}/batch/analyze`, {
       method: 'POST',
       body: formData,
     });
-    
+
     return response.json();
   }
 
@@ -53,7 +70,7 @@ class APIService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ video_id: videoId, threshold })
     });
-    
+
     return response.json();
   }
 
@@ -63,7 +80,33 @@ class APIService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ video_id: videoId, max_duration: maxDuration })
     });
-    
+
+    return response.json();
+  }
+
+  async generateChapters(videoId) {
+    const response = await fetch(`${this.baseURL}/generate/chapters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_id: videoId })
+    });
+
+    return response.json();
+  }
+
+  async getAnalyticsDashboard(videoId) {
+    const response = await fetch(`${this.baseURL}/analytics/dashboard/${videoId}`, {
+      method: 'GET'
+    });
+
+    return response.json();
+  }
+
+  async getPlatformStats() {
+    const response = await fetch(`${this.baseURL}/stats/platform`, {
+      method: 'GET'
+    });
+
     return response.json();
   }
 }

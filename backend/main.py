@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 import re
 from pathlib import Path
-
+import tempfile
 # FastAPI and web related
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -75,6 +75,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# At the top of your file
+SUBTITLE_DIR = os.path.join(os.getcwd(), "static_subtitles")
+os.makedirs(SUBTITLE_DIR, exist_ok=True)
 
 # Security
 security = HTTPBearer()
@@ -781,13 +784,31 @@ async def quick_analysis(file: UploadFile = File(...)):
         with open(video_path, "wb") as f:
             content = await file.read()
             f.write(content)
-        
+
         audio_path = extract_audio_advanced(video_path)
+        
+        # Transcribe
         result = model_loader.whisper_model.transcribe(audio_path)
         
-        summary = model_loader.summarizer(result['text'][:512], max_length=80, min_length=20, do_sample=False)
+        # Summarize
+        summary = model_loader.summarizer(
+            result['text'][:512], max_length=80, min_length=20, do_sample=False
+        )
+        
+        # Sentiment
         sentiment = model_loader.sentiment_pipeline(result['text'][:512])
         
+        # Duration and other audio features
+        audio_features = analyze_audio_features(audio_path)
+        duration = audio_features.get("duration", 0.0)
+
+        # Optional: Save SRT file using transcript segments if available
+        if "segments" in result:
+            srt = generate_srt_subtitle(result["segments"])
+            srt_path = f"/tmp/{uuid.uuid4()}.srt"
+            with open(srt_path, "w", encoding="utf-8") as f:
+                f.write(srt)
+
         # Cleanup
         os.remove(audio_path)
         shutil.rmtree(temp_dir)
@@ -796,20 +817,61 @@ async def quick_analysis(file: UploadFile = File(...)):
             "transcript": result['text'],
             "summary": summary[0]['summary_text'],
             "sentiment": sentiment[0],
-            "language": result.get('language', 'unknown')
+            "language": result.get('language', 'unknown'),
+            "duration": duration,
+            # Optional: include audio features
+            # "audio_features": audio_features
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+async def quick_analysis_from_path(video_path: str) -> dict:
+    try:
+        audio_path = extract_audio_advanced(video_path)
+
+        result = model_loader.whisper_model.transcribe(audio_path)
+        summary = model_loader.summarizer(
+            result['text'][:512], max_length=80, min_length=20, do_sample=False
+        )
+        sentiment = model_loader.sentiment_pipeline(result['text'][:512])
+        audio_features = analyze_audio_features(audio_path)
+        duration = audio_features.get("duration", 0.0)
+
+        # Save subtitles with a persistent filename
+        video_id = Path(video_path).stem  # removes .mp4 or .mkv, etc.
+        if "segments" in result:
+            srt = generate_srt_subtitle(result["segments"])
+            srt_path = os.path.join(SUBTITLE_DIR, f"{video_id}.srt")
+            with open(srt_path, "w", encoding="utf-8") as f:
+                f.write(srt)
+
+        os.remove(audio_path)
+
+        return {
+            "transcript": result['text'],
+            "summary": summary[0]['summary_text'],
+            "sentiment": sentiment[0],
+            "language": result.get('language', 'unknown'),
+            "duration": duration,
+            "video_id": video_id  # helpful for client to know which file to download
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @app.get("/download/subtitles/{video_id}.srt")
 async def download_subtitles(video_id: str):
     """Download subtitle file"""
-    file_path = f"/tmp/{video_id}.srt"
+    file_path = os.path.join(SUBTITLE_DIR, f"{video_id}.srt")
+    
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type='text/plain', filename=f"{video_id}.srt")
     else:
         raise HTTPException(status_code=404, detail="Subtitle file not found")
+
 
 @app.get("/download/thumbnail/{video_id}.jpg")
 async def download_thumbnail(video_id: str):
@@ -847,26 +909,49 @@ async def batch_analysis(
     """Batch process multiple videos"""
     if len(files) > 5:
         raise HTTPException(status_code=400, detail="Maximum 5 files per batch")
-    
+
     results = []
+
     for file in files:
         try:
+            # Save uploaded file to temp
+            temp_dir = tempfile.mkdtemp()
+            temp_filename = f"{uuid.uuid4()}_{file.filename}"
+            temp_filepath = os.path.join(temp_dir, temp_filename)
+
+            with open(temp_filepath, "wb") as f:
+                f.write(await file.read())
+                f.flush()
+                os.fsync(f.fileno())
+
             if analysis_type == "quick":
-                result = await quick_analysis(file)
+                result = await quick_analysis_from_path(temp_filepath)
+
+                # Get duration if needed
+                audio_features = analyze_audio_features(temp_filepath)
+                result["duration"] = audio_features.get("duration", 0.0)
+
                 result["filename"] = file.filename
+                result["status"] = "success"
                 results.append(result)
             else:
-                # For comprehensive analysis, would need to modify to handle batch
-                result = {"filename": file.filename, "status": "queued for processing"}
-                results.append(result)
+                results.append({
+                    "filename": file.filename,
+                    "status": "queued for processing"
+                })
+
+            os.remove(temp_filepath)
+
         except Exception as e:
             results.append({
                 "filename": file.filename,
                 "error": str(e),
                 "status": "failed"
             })
-    
+
     return {"batch_results": results, "total_processed": len(results)}
+
+
 
 @app.post("/search/similar")
 async def find_similar_videos(

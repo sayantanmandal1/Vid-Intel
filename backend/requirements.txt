@@ -36,3 +36,4 @@ httpx
 moviepy
 fastapi
 uvicorn
+yt-dlp

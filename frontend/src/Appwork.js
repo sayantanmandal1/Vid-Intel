@@ -674,43 +674,48 @@ const UploadSection = () => {
           
           {analysisResult && (
             <Card title="Analysis Results">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">
-                      {Math.round(analysisResult.metadata?.duration / 60) || 0}m
-                    </p>
-                    <p className="text-sm text-blue-600">Duration</p>
+              <div className="space-y-6">
+                {analysisResult.map((result, index) => (
+                  <div key={index} className="p-4 border rounded-md bg-white shadow">
+                    <h4 className="text-lg font-bold mb-2">{result.filename}</h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">
+                          {Math.round(result.metadata?.duration / 60) || 0}m
+                        </p>
+                        <p className="text-sm text-blue-600">Duration</p>
+                      </div>
+
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <Badge
+                          variant={
+                            result.sentiment?.label === 'positive'
+                              ? 'success'
+                              : result.sentiment?.label === 'negative'
+                              ? 'danger'
+                              : 'info'
+                          }
+                          size="lg"
+                        >
+                          {result.sentiment?.label || 'N/A'}
+                        </Badge>
+                        <p className="text-sm text-green-600">Sentiment</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Transcript Preview</h4>
+                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                        {result.transcript?.substring(0, 200) || 'No transcript available'}...
+                      </p>
+                    </div>
                   </div>
-                  
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">
-                      {analysisResult.sentiment_analysis?.label || 'N/A'}
-                    </p>
-                    <p className="text-sm text-green-600">Sentiment</p>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Transcript Preview</h4>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                    {analysisResult.transcript?.substring(0, 200) || 'No transcript available'}...
-                  </p>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Report
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Details
-                  </Button>
-                </div>
+                ))}
               </div>
             </Card>
           )}
+
         </div>
       </div>
     </div>
