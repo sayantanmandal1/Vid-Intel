@@ -28,6 +28,6 @@ backend/*.pth
 # System files
 .DS_Store
 *.log
-
+downloads
 backend/The Great Depression - 5 Minute History Lesson.mp4
 backend/197485-905015019_small.mp4

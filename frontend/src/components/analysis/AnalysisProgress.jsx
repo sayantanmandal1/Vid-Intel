@@ -11,6 +11,8 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
   const [estimatedCompletion, setEstimatedCompletion] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const maxConnectionAttempts = 5;
   
   const wsRef = useRef(null);
   const pollIntervalRef = useRef(null);
@@ -21,6 +23,12 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
 
     // Try WebSocket connection first, fallback to polling
     const connectWebSocket = () => {
+      if (connectionAttempts >= maxConnectionAttempts) {
+        console.log('Max WebSocket connection attempts reached, switching to polling');
+        startPolling();
+        return;
+      }
+
       try {
         const wsUrl = `ws://localhost:8000/ws/analysis/${sessionId}`;
         wsRef.current = new WebSocket(wsUrl);
@@ -29,6 +37,7 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
           console.log('WebSocket connected for analysis progress');
           setIsConnected(true);
           setError(null);
+          setConnectionAttempts(0); // Reset on successful connection
         };
 
         wsRef.current.onmessage = (event) => {
@@ -43,22 +52,30 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
         wsRef.current.onerror = (error) => {
           console.error('WebSocket error:', error);
           setIsConnected(false);
-          // Fallback to polling
-          startPolling();
+          setConnectionAttempts(prev => prev + 1);
         };
 
-        wsRef.current.onclose = () => {
-          console.log('WebSocket connection closed');
+        wsRef.current.onclose = (event) => {
+          console.log('WebSocket connection closed', event.code, event.reason);
           setIsConnected(false);
-          // Try to reconnect after a delay
-          setTimeout(() => {
-            if (progress < 100) {
-              connectWebSocket();
-            }
-          }, 3000);
+          
+          // Only reconnect if analysis is still in progress and we haven't had too many failures
+          if (progress < 100 && !error && event.code !== 1000 && connectionAttempts < maxConnectionAttempts) {
+            // Wait longer between reconnection attempts to avoid spam
+            setTimeout(() => {
+              if (progress < 100) {
+                connectWebSocket();
+              }
+            }, 5000); // 5 second delay
+          } else {
+            // Start polling as fallback
+            console.log('Switching to polling mode');
+            startPolling();
+          }
         };
       } catch (err) {
         console.error('Failed to create WebSocket connection:', err);
+        setConnectionAttempts(prev => prev + 1);
         startPolling();
       }
     };
@@ -82,10 +99,16 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
     };
 
     const handleProgressUpdate = (data) => {
+      console.log('📊 Progress update received:', data);
+      
       setProgress(data.progress || 0);
       setCurrentTask(data.current_segment || data.status || 'Processing...');
       setSegmentsCompleted(data.segments_completed || 0);
       setTotalSegments(data.total_segments || 0);
+      
+      console.log(`   Progress: ${data.progress || 0}%`);
+      console.log(`   Task: ${data.current_segment || data.status || 'Processing...'}`);
+      console.log(`   Segments: ${data.segments_completed || 0}/${data.total_segments || 0}`);
       
       // Calculate estimated completion time
       if (data.progress > 0 && data.progress < 100) {
@@ -93,10 +116,12 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
         const estimatedTotal = (elapsed / data.progress) * 100;
         const remaining = estimatedTotal - elapsed;
         setEstimatedCompletion(new Date(Date.now() + remaining));
+        console.log(`   Estimated completion: ${new Date(Date.now() + remaining).toLocaleTimeString()}`);
       }
 
       // Handle preliminary results
       if (data.preliminary_results) {
+        console.log(`📋 Preliminary results: ${data.preliminary_results.length} items`);
         setPreliminaryResults(prev => {
           const newResults = [...prev];
           data.preliminary_results.forEach(result => {
@@ -113,6 +138,7 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
 
       // Handle completion
       if (data.status === 'completed' || data.progress >= 100) {
+        console.log('✅ Analysis completed!');
         setProgress(100);
         setCurrentTask('Analysis complete!');
         if (onComplete) {
@@ -123,6 +149,7 @@ const AnalysisProgress = ({ sessionId, onProgressUpdate, onComplete, onError }) 
 
       // Handle errors
       if (data.status === 'failed' || data.error) {
+        console.error('❌ Analysis failed:', data.error || 'Unknown error');
         setError(data.error || 'Analysis failed');
         if (onError) {
           onError(data.error || 'Analysis failed');

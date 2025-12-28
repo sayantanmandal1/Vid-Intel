@@ -331,9 +331,8 @@ class AnalysisOrchestrator(BaseProcessor):
             
             # If fallback was successful, return partial results
             if error_result.status == ProcessingStatus.COMPLETED and error_result.data.get('fallback_used'):
-                logger.info(f"Using fallback analysis results for session {session_id}")
-                # Create minimal report from fallback
-                return self._create_fallback_report(session_id, video_path, metadata, str(e))
+                # NO FALLBACKS - Let the error propagate
+                raise
             
             raise
     
@@ -1068,28 +1067,62 @@ class AnalysisOrchestrator(BaseProcessor):
         try:
             logger.info(f"Extracting metadata from: {video_path}")
             
-            if MOVIEPY_AVAILABLE:
-                # Use moviepy to extract metadata
-                video = VideoFileClip(video_path)
-                
-                # Get basic video properties
-                duration = video.duration  # in seconds
-                fps = video.fps
-                resolution = f"{video.w}x{video.h}"
-                
-                # Close the video clip to free resources
-                video.close()
-            else:
-                # Fallback metadata extraction
-                logger.warning("MoviePy not available - using fallback metadata extraction")
-                duration = 300.0  # Default 5 minutes
-                fps = 30.0
-                resolution = "1920x1080"
-            
-            # Get file information
+            # Get file information first
             file_path = Path(video_path)
             file_size = file_path.stat().st_size if file_path.exists() else 0
             file_format = file_path.suffix.lower().lstrip('.')
+            
+            # Try to extract metadata with moviepy
+            duration = 300.0  # Default fallback
+            fps = 30.0
+            resolution = "1920x1080"
+            
+            if MOVIEPY_AVAILABLE and file_size > 1000:  # Only try if file is substantial
+                try:
+                    # Use moviepy to extract metadata
+                    video = VideoFileClip(video_path)
+                    
+                    # Get basic video properties
+                    if hasattr(video, 'duration') and video.duration:
+                        duration = video.duration  # in seconds
+                    if hasattr(video, 'fps') and video.fps:
+                        fps = video.fps
+                    if hasattr(video, 'w') and hasattr(video, 'h') and video.w and video.h:
+                        resolution = f"{video.w}x{video.h}"
+                    
+                    # Close the video clip to free resources
+                    video.close()
+                    
+                    logger.info(f"Successfully extracted metadata using MoviePy")
+                    
+                except Exception as moviepy_error:
+                    logger.warning(f"MoviePy metadata extraction failed: {moviepy_error}")
+                    
+                    # Try alternative method using cv2 if available
+                    try:
+                        import cv2
+                        cap = cv2.VideoCapture(video_path)
+                        if cap.isOpened():
+                            fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+                            frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                            if frame_count > 0 and fps > 0:
+                                duration = frame_count / fps
+                            
+                            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                            if width > 0 and height > 0:
+                                resolution = f"{width}x{height}"
+                            
+                            cap.release()
+                            logger.info(f"Successfully extracted metadata using OpenCV")
+                        else:
+                            logger.warning("OpenCV could not open video file")
+                    except ImportError:
+                        logger.warning("OpenCV not available for fallback metadata extraction")
+                    except Exception as cv2_error:
+                        logger.warning(f"OpenCV metadata extraction failed: {cv2_error}")
+            else:
+                logger.info("Using fallback metadata extraction (MoviePy not available or file too small)")
             
             # Generate simple hash based on file size and name for now
             # In production, you might want to use actual file hash
@@ -1104,7 +1137,7 @@ class AnalysisOrchestrator(BaseProcessor):
                 hash=file_hash
             )
             
-            logger.info(f"Extracted metadata: {duration:.2f}s, {resolution}, {fps:.2f} fps, {file_size} bytes")
+            logger.info(f"Final metadata: {duration:.2f}s, {resolution}, {fps:.2f} fps, {file_size} bytes")
             return metadata
             
         except Exception as e:
@@ -1301,7 +1334,7 @@ class AnalysisOrchestrator(BaseProcessor):
             # Call progress callback if available
             if self.progress_callback:
                 try:
-                    await self.progress_callback(session_id, message, progress_percent)
+                    await self.progress_callback(message, progress_percent)
                 except Exception as e:
                     logger.warning(f"Progress callback failed: {e}")
                     
@@ -1383,55 +1416,8 @@ class AnalysisOrchestrator(BaseProcessor):
             # In production, you might want to recreate the pool
     
     async def _orchestrator_fallback(self, context: Dict[str, Any]) -> ProcessingResult:
-        """Fallback strategy for orchestrator failures"""
-        try:
-            session_id = context.get('session_id', 'unknown')
-            operation = context.get('operation', 'unknown')
-            
-            logger.info(f"Executing orchestrator fallback for {operation} in session {session_id}")
-            
-            if operation == 'analyze_video':
-                # Create minimal analysis report
-                return ProcessingResult(
-                    component_name=self.name,
-                    status=ProcessingStatus.COMPLETED,
-                    data={
-                        'fallback_report': True,
-                        'summary': 'Video analysis completed with limited functionality due to system errors',
-                        'segments': [],
-                        'processing_time': 0.0
-                    }
-                )
-            elif operation == 'process_segment':
-                # Create minimal segment analysis
-                return ProcessingResult(
-                    component_name=self.name,
-                    status=ProcessingStatus.COMPLETED,
-                    data={
-                        'description': 'Segment processed with limited analysis due to component failures',
-                        'confidence': 0.3,
-                        'fallback_used': True
-                    }
-                )
-            else:
-                # Generic fallback
-                return ProcessingResult(
-                    component_name=self.name,
-                    status=ProcessingStatus.COMPLETED,
-                    data={
-                        'message': f'Operation {operation} completed with fallback mechanism',
-                        'fallback_used': True
-                    }
-                )
-                
-        except Exception as e:
-            logger.error(f"Orchestrator fallback failed: {e}")
-            return ProcessingResult(
-                component_name=self.name,
-                status=ProcessingStatus.FAILED,
-                data={},
-                error_message=f"Fallback mechanism failed: {str(e)}"
-            )
+        """NO FALLBACKS - This should never be called"""
+        raise Exception("FALLBACK DISABLED - Orchestrator must work or fail completely")
     
     def _create_fallback_report(self, session_id: str, video_path: str, metadata: VideoMetadata, error_message: str) -> AnalysisReport:
         """Create a fallback analysis report when main analysis fails"""

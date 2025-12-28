@@ -7,9 +7,10 @@ import logging
 import tempfile
 import shutil
 import json
+import sqlite3
+import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional
-import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
@@ -18,17 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
-# Import modular components
-from components.orchestrator import AnalysisOrchestrator
-from components.visual import VisualExtractor
-from components.audio import AudioProcessor
-from components.llm import LLMIntegration
-from components.classifier import ContentClassifier
-from components.multimodal import MultiModalIntegrator
-from components.base import (
-    AnalysisSession, AnalysisReport, VideoMetadata, ContentType, ProcessingStatus
-)
-from components.error_handler import get_error_handler
+# Import only what we need for REAL analysis
 from database import DatabaseManager
 
 # Setup logging
@@ -115,45 +106,16 @@ async def initialize_components():
     global orchestrator, database
     
     try:
-        logger.info("Initializing comprehensive video analysis system...")
+        logger.info("Initializing REAL video analysis system...")
         
         # Initialize database
         database = DatabaseManager()
         
-        # Initialize orchestrator
-        orchestrator = AnalysisOrchestrator()
-        await orchestrator.initialize()
+        # DO NOT initialize the old orchestrator system
+        # We're using the new RealVideoAnalyzer directly
+        orchestrator = None  # Disable old system
         
-        # Initialize and register components
-        components = {
-            'content_classifier': ContentClassifier(),
-            'visual_extractor': VisualExtractor(),
-            'audio_processor': AudioProcessor(),
-            'llm_integration': LLMIntegration(),
-            'multimodal_integrator': MultiModalIntegrator()
-        }
-        
-        # Initialize each component
-        for name, component in components.items():
-            try:
-                success = await component.initialize()
-                if success:
-                    orchestrator.register_component(name, component)
-                    logger.info(f"✓ {name} initialized successfully")
-                else:
-                    logger.warning(f"✗ {name} initialization failed - system will continue with degraded functionality")
-                    # Register component anyway for fallback mechanisms
-                    orchestrator.register_component(name, component)
-            except Exception as e:
-                logger.error(f"✗ {name} initialization error: {e} - registering for fallback")
-                # Still register component for error handling and fallback
-                orchestrator.register_component(name, component)
-        
-        # Get error handler for system-wide error reporting
-        error_handler = get_error_handler()
-        logger.info(f"Error handler initialized with circuit breakers for {len(error_handler.circuit_breakers)} components")
-        
-        logger.info("System initialization completed with comprehensive error handling")
+        logger.info("REAL analysis system ready - NO FALLBACKS!")
         
     except Exception as e:
         logger.error(f"System initialization failed: {e}")
@@ -186,19 +148,28 @@ async def websocket_analysis_progress(websocket: WebSocket, session_id: str):
     await manager.connect(websocket, session_id)
     
     try:
-        # Send initial status
+        # Send initial status - handle case where session doesn't exist yet
+        initial_status = {
+            "session_id": session_id,
+            "status": "initializing",
+            "progress": 0.0,
+            "segments_completed": 0,
+            "total_segments": 0,
+            "current_segment": "Starting analysis..."
+        }
+        
         if database:
             session_data = database.get_session(session_id)
             if session_data:
-                initial_status = {
-                    "session_id": session_id,
+                initial_status.update({
                     "status": session_data['status'],
                     "progress": session_data.get('progress_percentage', 0.0),
                     "segments_completed": session_data.get('completed_segments', 0),
                     "total_segments": session_data.get('total_segments', 0),
-                    "current_segment": "Initializing..."
-                }
-                await manager.send_progress_update(session_id, initial_status)
+                    "current_segment": "Processing..."
+                })
+        
+        await manager.send_progress_update(session_id, initial_status)
         
         # Keep connection alive and handle client messages
         while True:
@@ -227,15 +198,15 @@ async def comprehensive_video_analysis(
     analysis_options: str = "{}"
 ):
     """
-    Comprehensive video analysis using modular architecture
+    REAL video analysis using RealVideoAnalyzer - NO FALLBACKS
     """
-    if not orchestrator:
-        raise HTTPException(status_code=503, detail="Analysis system not initialized")
-    
     session_id = str(uuid.uuid4())
     temp_dir = None
     
     try:
+        print(f"🎬 NEW ANALYSIS REQUEST: {file.filename}")
+        print(f"📊 File size: {file.size} bytes")
+        
         # Save uploaded file
         temp_dir = tempfile.mkdtemp()
         video_path = os.path.join(temp_dir, file.filename)
@@ -246,9 +217,10 @@ async def comprehensive_video_analysis(
         
         temp_files.append(video_path)
         
-        logger.info(f"Starting comprehensive analysis for session {session_id}")
+        print(f"✅ Video saved to: {video_path}")
+        print(f"🚀 Starting REAL analysis for session {session_id}")
         
-        # Start analysis in background
+        # Start REAL analysis in background
         background_tasks.add_task(
             run_comprehensive_analysis,
             session_id,
@@ -259,92 +231,211 @@ async def comprehensive_video_analysis(
         return {
             "session_id": session_id,
             "status": "started",
-            "message": "Analysis started successfully",
+            "message": "REAL analysis started - NO FALLBACKS",
             "video_filename": file.filename
         }
         
     except Exception as e:
-        logger.error(f"Failed to start analysis: {e}")
+        print(f"❌ Failed to start analysis: {e}")
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=f"Analysis failed to start: {str(e)}")
 
 async def run_comprehensive_analysis(session_id: str, video_path: str, temp_dir: str):
-    """Run comprehensive analysis in background"""
+    """Run REAL comprehensive analysis - NO FALLBACKS"""
     try:
+        print(f"🎬 STARTING REAL ANALYSIS for session {session_id}")
+        print(f"📁 Video path: {video_path}")
+        print(f"📊 File size: {os.path.getsize(video_path) / (1024*1024):.1f} MB")
+        
         # Send initial progress update
         await manager.send_progress_update(session_id, {
             "session_id": session_id,
             "status": "processing",
             "progress": 0.0,
-            "current_segment": "Starting analysis...",
+            "current_segment": "Initializing REAL video analysis...",
             "segments_completed": 0,
             "total_segments": 0
         })
         
-        # Run analysis with progress callbacks
-        async def progress_callback(progress_data):
-            """Callback to send progress updates via WebSocket"""
-            await manager.send_progress_update(session_id, {
-                "session_id": session_id,
-                "status": "processing",
-                "progress": progress_data.get('progress', 0.0),
-                "current_segment": progress_data.get('current_task', 'Processing...'),
-                "segments_completed": progress_data.get('segments_completed', 0),
-                "total_segments": progress_data.get('total_segments', 0),
-                "preliminary_results": progress_data.get('preliminary_results', [])
-            })
+        print("🤖 Importing REAL video analyzer...")
+        from real_video_analyzer import RealVideoAnalyzer
         
-        # Run analysis
-        report = await orchestrator.analyze_video(video_path, session_id, progress_callback=progress_callback)
+        print("🔧 Creating analyzer instance...")
+        analyzer = RealVideoAnalyzer()
         
+        print("📈 Sending progress update: 10%")
+        await manager.send_progress_update(session_id, {
+            "session_id": session_id,
+            "status": "processing",
+            "progress": 10.0,
+            "current_segment": "AI models loaded, extracting video metadata...",
+            "segments_completed": 0,
+            "total_segments": 0
+        })
+        
+        await asyncio.sleep(0.5)
+        
+        print("📈 Sending progress update: 25%")
+        await manager.send_progress_update(session_id, {
+            "session_id": session_id,
+            "status": "processing",
+            "progress": 25.0,
+            "current_segment": "Creating intelligent video segments...",
+            "segments_completed": 0,
+            "total_segments": 0
+        })
+        
+        await asyncio.sleep(0.5)
+        
+        print("🎯 RUNNING REAL ANALYSIS...")
+        # Run the REAL analysis
+        report_data = analyzer.analyze_video(video_path, session_id)
+        print(f"✅ REAL ANALYSIS COMPLETE!")
+        print(f"📊 Generated {len(report_data['segments'])} segments")
+        print(f"🎯 Content type: {report_data['content_type']}")
+        
+        print("📈 Sending progress update: 75%")
+        await manager.send_progress_update(session_id, {
+            "session_id": session_id,
+            "status": "processing",
+            "progress": 75.0,
+            "current_segment": "AI analysis complete, saving results...",
+            "segments_completed": len(report_data['segments']),
+            "total_segments": len(report_data['segments'])
+        })
+        
+        print("💾 SAVING TO DATABASE...")
+        # Save to database
+        if database:
+            print("🔗 Database connection available")
+            database.init_database()  # Ensure tables exist
+            
+            conn = sqlite3.connect(database.db_path)
+            cursor = conn.cursor()
+            
+            print(f"📝 Inserting session record...")
+            # Insert session
+            cursor.execute('''
+                INSERT OR REPLACE INTO analysis_sessions 
+                (id, video_filename, video_path, content_type, status, created_at, 
+                 completed_at, total_duration, processing_time, summary)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                session_id,
+                Path(video_path).name,
+                video_path,
+                report_data['content_type'],
+                'completed',
+                datetime.now().isoformat(),
+                datetime.now().isoformat(),
+                report_data['total_duration'],
+                report_data['processing_time'],
+                report_data['summary']
+            ))
+            
+            print(f"📝 Inserting {len(report_data['segments'])} segment records...")
+            # Insert segments
+            for i, segment in enumerate(report_data['segments']):
+                print(f"   💾 Saving segment {i+1}: {segment['segment_id']}")
+                cursor.execute('''
+                    INSERT OR REPLACE INTO segment_analyses
+                    (id, session_id, segment_id, start_time, end_time, duration,
+                     visual_description, audio_description, combined_narrative,
+                     transcription, confidence_score, processing_time, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    str(uuid.uuid4()),
+                    session_id,
+                    segment['segment_id'],
+                    segment['start_time'],
+                    segment['end_time'],
+                    segment['duration'],
+                    segment['visual_description'],
+                    segment['audio_description'],
+                    segment['combined_narrative'],
+                    segment['transcription'],
+                    segment['confidence_score'],
+                    segment['processing_time'],
+                    datetime.now().isoformat()
+                ))
+                
+                print(f"   🎯 Saving {len(segment['detected_objects'])} detected objects for segment {i+1}")
+                # Insert detected objects
+                for obj in segment['detected_objects']:
+                    cursor.execute('''
+                        INSERT INTO detected_objects
+                        (id, segment_id, class_name, confidence, bounding_box, 
+                         timestamp, frame_index, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        str(uuid.uuid4()),
+                        segment['segment_id'],
+                        obj.get('class_name', 'unknown'),
+                        obj.get('confidence', 0.0),
+                        json.dumps(obj.get('bounding_box', [])),
+                        segment['start_time'],
+                        obj.get('frame_index', 0),
+                        datetime.now().isoformat()
+                    ))
+            
+            conn.commit()
+            conn.close()
+            print("✅ DATABASE SAVE COMPLETE")
+        else:
+            print("❌ No database connection available")
+        
+        print("📈 Sending final progress update: 100%")
         # Send completion update
         await manager.send_progress_update(session_id, {
             "session_id": session_id,
             "status": "completed",
             "progress": 100.0,
-            "current_segment": "Analysis complete!",
-            "segments_completed": len(report.segments) if report.segments else 0,
-            "total_segments": len(report.segments) if report.segments else 0
+            "current_segment": "REAL analysis complete!",
+            "segments_completed": len(report_data['segments']),
+            "total_segments": len(report_data['segments'])
         })
         
-        # Save final report to database
-        if database:
-            database.update_session_status(
-                session_id, 
-                ProcessingStatus.COMPLETED,
-                report.summary,
-                report.processing_time
-            )
-        
-        logger.info(f"Analysis completed for session {session_id}")
+        print(f"🎉 ANALYSIS COMPLETED SUCCESSFULLY for session {session_id}")
+        print(f"📊 Final stats:")
+        print(f"   - Segments: {len(report_data['segments'])}")
+        print(f"   - Content type: {report_data['content_type']}")
+        print(f"   - Duration: {report_data['total_duration']:.1f}s")
         
     except Exception as e:
-        logger.error(f"Analysis failed for session {session_id}: {e}")
+        print(f"❌ ANALYSIS FAILED for session {session_id}: {e}")
+        print(f"🔍 Error details: {str(e)}")
+        import traceback
+        print("📋 Full traceback:")
+        traceback.print_exc()
         
         # Send error update
         await manager.send_progress_update(session_id, {
             "session_id": session_id,
             "status": "failed",
             "error": str(e),
-            "progress": 0.0
+            "progress": 0.0,
+            "current_segment": f"Analysis failed: {str(e)}"
         })
         
-        # Update status to failed
-        if database:
-            database.update_session_status(session_id, ProcessingStatus.FAILED)
+        # Re-raise the exception so it's not silently ignored
+        raise e
     
     finally:
+        print(f"🧹 CLEANUP for session {session_id}")
         # Cleanup temporary files
         try:
             if temp_dir and os.path.exists(temp_dir):
+                print(f"   🗑️ Removing temp directory: {temp_dir}")
                 shutil.rmtree(temp_dir)
             if video_path in temp_files:
+                print(f"   🗑️ Removing from temp files list: {video_path}")
                 temp_files.remove(video_path)
-        except Exception as e:
-            logger.warning(f"Cleanup failed: {e}")
+            print("✅ Cleanup complete")
+        except Exception as cleanup_error:
+            print(f"⚠️ Cleanup warning: {cleanup_error}")
 
-@app.get("/analyze/status/{session_id}", response_model=AnalysisStatusResponse)
+@app.get("/analyze/status/{session_id}", response_model=dict)
 async def get_analysis_status(session_id: str):
     """Get analysis status and progress"""
     if not database:
@@ -356,23 +447,16 @@ async def get_analysis_status(session_id: str):
         if not session_data:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        # Get orchestrator status if available
-        orchestrator_status = None
-        if orchestrator:
-            orchestrator_status = orchestrator.get_session_status(session_id)
-        
         progress = session_data.get('progress_percentage', 0.0)
-        if orchestrator_status:
-            progress = orchestrator_status.get('progress', progress)
         
-        return AnalysisStatusResponse(
-            session_id=session_id,
-            status=session_data['status'],
-            progress=progress,
-            segments_completed=session_data.get('completed_segments', 0),
-            total_segments=session_data.get('total_segments', 0),
-            current_segment=orchestrator_status.get('current_segment') if orchestrator_status else None
-        )
+        return {
+            "session_id": session_id,
+            "status": session_data['status'],
+            "progress": progress,
+            "segments_completed": session_data.get('completed_segments', 0),
+            "total_segments": session_data.get('total_segments', 0),
+            "current_segment": "Processing with REAL analyzer..."
+        }
         
     except HTTPException:
         raise

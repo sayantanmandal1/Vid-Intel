@@ -665,28 +665,8 @@ class AudioProcessor(BaseProcessor, ComponentInterface):
             self.whisper_model = None
     
     async def _audio_fallback(self, context: Dict[str, Any]) -> ProcessingResult:
-        """Fallback strategy for audio processing failures"""
-        try:
-            logger.info("Executing audio processing fallback")
-            
-            # Create minimal audio analysis result
-            fallback_data = {
-                'transcription': '',
-                'speakers': [],
-                'music_analysis': {'has_music': False, 'tempo': 0},
-                'sound_effects': [],
-                'speech_patterns': {'word_count': 0, 'speaker_count': 0},
-                'audio_features': {},
-                'description': 'Audio processing unavailable - visual analysis continued',
-                'confidence': 0.1,
-                'fallback_used': True
-            }
-            
-            return ProcessingResult(
-                component_name=self.name,
-                status=ProcessingStatus.COMPLETED,
-                data=fallback_data
-            )
+        """NO FALLBACKS - This should never be called"""
+        raise Exception("FALLBACK DISABLED - Audio processing must work or fail completely")
             
         except Exception as e:
             logger.error(f"Audio fallback failed: {e}")

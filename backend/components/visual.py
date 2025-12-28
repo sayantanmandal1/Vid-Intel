@@ -196,40 +196,111 @@ class VisualExtractor(BaseProcessor, ComponentInterface):
     async def extract_frames(self, video_path: str, start_time: float = 0, end_time: float = None) -> List[np.ndarray]:
         """Extract frames from video at specified intervals"""
         try:
+            logger.info(f"Extracting frames from {video_path} ({start_time}s to {end_time}s)")
+            
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
                 logger.error(f"Could not open video: {video_path}")
+                # Try alternative approach with moviepy if available
+                if MOVIEPY_AVAILABLE:
+                    return await self._extract_frames_moviepy(video_path, start_time, end_time)
                 return []
             
             fps = cap.get(cv2.CAP_PROP_FPS)
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             duration = total_frames / fps if fps > 0 else 0
             
+            if fps <= 0:
+                logger.warning(f"Invalid FPS ({fps}) detected, using default")
+                fps = 30.0
+            
             if end_time is None:
                 end_time = duration
             
             frames = []
             current_time = start_time
+            max_frames = 10  # Limit frames to prevent memory issues
+            frame_count = 0
             
-            while current_time < end_time:
+            logger.info(f"Video info: FPS={fps}, Duration={duration}s, Total frames={total_frames}")
+            
+            while current_time < end_time and frame_count < max_frames:
                 # Seek to specific time
                 frame_number = int(current_time * fps)
                 cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
                 
                 ret, frame = cap.read()
-                if ret:
+                if ret and frame is not None:
+                    # Resize frame to reduce memory usage
+                    height, width = frame.shape[:2]
+                    if width > 640:  # Resize if too large
+                        scale = 640 / width
+                        new_width = int(width * scale)
+                        new_height = int(height * scale)
+                        frame = cv2.resize(frame, (new_width, new_height))
+                    
                     frames.append(frame)
+                    frame_count += 1
+                    logger.debug(f"Extracted frame {frame_count} at {current_time:.1f}s")
                 else:
+                    logger.warning(f"Failed to read frame at {current_time:.1f}s")
                     break
                 
                 current_time += self.frame_extraction_interval
             
             cap.release()
-            logger.info(f"Extracted {len(frames)} frames from {start_time}s to {end_time}s")
+            logger.info(f"Successfully extracted {len(frames)} frames from {start_time}s to {end_time}s")
             return frames
             
         except Exception as e:
             logger.error(f"Frame extraction failed: {e}")
+            # Try moviepy fallback
+            if MOVIEPY_AVAILABLE:
+                logger.info("Trying MoviePy fallback for frame extraction")
+                return await self._extract_frames_moviepy(video_path, start_time, end_time)
+            return []
+    
+    async def _extract_frames_moviepy(self, video_path: str, start_time: float = 0, end_time: float = None) -> List[np.ndarray]:
+        """Fallback frame extraction using MoviePy"""
+        try:
+            from moviepy import VideoFileClip
+            
+            video = VideoFileClip(video_path)
+            if end_time is None:
+                end_time = video.duration
+            
+            frames = []
+            current_time = start_time
+            max_frames = 10
+            frame_count = 0
+            
+            while current_time < end_time and frame_count < max_frames:
+                try:
+                    frame = video.get_frame(current_time)
+                    # Convert RGB to BGR for OpenCV compatibility
+                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    
+                    # Resize if needed
+                    height, width = frame_bgr.shape[:2]
+                    if width > 640:
+                        scale = 640 / width
+                        new_width = int(width * scale)
+                        new_height = int(height * scale)
+                        frame_bgr = cv2.resize(frame_bgr, (new_width, new_height))
+                    
+                    frames.append(frame_bgr)
+                    frame_count += 1
+                    current_time += self.frame_extraction_interval
+                except Exception as frame_error:
+                    logger.warning(f"Failed to extract frame at {current_time}s: {frame_error}")
+                    break
+            
+            video.close()
+            logger.info(f"MoviePy extracted {len(frames)} frames")
+            return frames
+            
+        except Exception as e:
+            logger.error(f"MoviePy frame extraction failed: {e}")
             return []
     
     async def detect_objects(self, frames: List[np.ndarray]) -> List[Dict[str, Any]]:
@@ -1107,31 +1178,8 @@ class VisualExtractor(BaseProcessor, ComponentInterface):
             self.yolo_model = None
     
     async def _visual_fallback(self, context: Dict[str, Any]) -> ProcessingResult:
-        """Fallback strategy for visual processing failures"""
-        try:
-            logger.info("Executing visual processing fallback")
-            
-            # Create minimal visual analysis result
-            fallback_data = {
-                'objects': [],
-                'scenes': [{'frame_index': 0, 'timestamp': 0.0, 'brightness': 128.0, 'contrast': 50.0}],
-                'text_elements': [],
-                'movement_analysis': {'movement_detected': False, 'movement_intensity': 0.0},
-                'visual_style': {
-                    'lighting': 'unknown',
-                    'composition': 'unknown',
-                    'color_temperature': 'neutral'
-                },
-                'description': 'Visual processing unavailable - basic analysis provided',
-                'confidence': 0.2,
-                'fallback_used': True
-            }
-            
-            return ProcessingResult(
-                component_name=self.name,
-                status=ProcessingStatus.COMPLETED,
-                data=fallback_data
-            )
+        """NO FALLBACKS - This should never be called"""
+        raise Exception("FALLBACK DISABLED - Visual processing must work or fail completely")
             
         except Exception as e:
             logger.error(f"Visual fallback failed: {e}")
