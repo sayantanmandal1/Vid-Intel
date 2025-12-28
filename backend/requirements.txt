@@ -1,0 +1,58 @@
+# Core FastAPI and web dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+python-jose[cryptography]
+
+# AI/ML Libraries
+torch
+torchvision
+torchaudio
+transformers
+sentence-transformers
+openai-whisper
+keybert
+ultralytics
+ollama
+
+# Computer Vision
+opencv-python
+face-recognition
+pillow
+pytesseract
+
+# Audio/Video Processing
+moviepy
+librosa
+pydub
+
+# NLP Libraries
+spacy
+textblob
+yake
+nltk
+
+# Data Processing
+numpy
+pandas
+scikit-learn
+scipy
+
+# Database
+sqlalchemy
+
+# Utilities
+requests
+googletrans
+wikipedia
+pydantic
+python-dotenv
+psutil
+
+# Testing
+pytest
+pytest-asyncio
+httpx
+
+# Additional tools
+yt-dlp

@@ -1,0 +1,1 @@
+# Components package for modular video analysis system
