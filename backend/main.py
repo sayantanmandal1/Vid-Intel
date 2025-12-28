@@ -639,6 +639,75 @@ async def delete_analysis_session(session_id: str):
         logger.error(f"Failed to delete session: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete session")
 
+@app.get("/stats/platform")
+async def get_platform_stats():
+    """Get platform statistics and metrics"""
+    try:
+        # Get system health information
+        health_info = await system_health()
+        
+        # Calculate platform metrics
+        total_components = len(health_info["components"])
+        healthy_components = sum(1 for status in health_info["components"].values() if status)
+        
+        # Get error handler metrics
+        error_handler = get_error_handler()
+        error_metrics = {
+            "total_errors": len(error_handler.error_history),
+            "recent_errors": len([e for e in error_handler.error_history if (datetime.now() - e.timestamp).total_seconds() < 3600]),
+            "component_health": error_handler.get_component_health()
+        }
+        
+        # Get database stats if available
+        db_stats = {}
+        if database:
+            try:
+                # You can add database-specific metrics here
+                db_stats = {
+                    "connected": True,
+                    "status": "operational"
+                }
+            except Exception as e:
+                db_stats = {
+                    "connected": False,
+                    "error": str(e)
+                }
+        
+        return {
+            "platform": {
+                "name": "VidIntel Pro",
+                "version": "3.0.0",
+                "status": health_info["status"],
+                "uptime": "running",
+                "architecture": "modular"
+            },
+            "components": {
+                "total": total_components,
+                "healthy": healthy_components,
+                "unhealthy": total_components - healthy_components,
+                "health_percentage": (healthy_components / total_components * 100) if total_components > 0 else 0
+            },
+            "performance": {
+                "error_rate": error_metrics["recent_errors"],
+                "total_errors": error_metrics["total_errors"],
+                "circuit_breakers": health_info.get("circuit_breakers", {})
+            },
+            "database": db_stats,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get platform stats: {e}")
+        return {
+            "platform": {
+                "name": "VidIntel Pro",
+                "version": "3.0.0",
+                "status": "error",
+                "error": str(e)
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
 @app.get("/")
 def root():
     """Root endpoint with API information"""
@@ -665,7 +734,8 @@ def root():
             "components": "/system/components",
             "errors": "/system/errors",
             "circuit_breakers": "/system/circuit-breakers",
-            "reset_circuit_breaker": "/system/circuit-breakers/{component_name}/reset"
+            "reset_circuit_breaker": "/system/circuit-breakers/{component_name}/reset",
+            "platform_stats": "/stats/platform"
         }
     }
 

@@ -36,34 +36,34 @@ class LLMIntegration(BaseProcessor, ComponentInterface):
         # Model preferences by content type and task
         self.model_preferences = {
             ContentType.MUSIC_VIDEO: {
-                'primary': ['llama3.2-vision:11b', 'qwen2.5:14b', 'llama3.2:8b'],
-                'vision': ['llama3.2-vision:11b', 'qwen2.5:14b'],
-                'text': ['qwen2.5:14b', 'llama3.2:8b', 'deepseek-coder:6.7b']
+                'primary': ['llama3.2-vision:11b', 'qwen2.5:14b'],
+                'vision': ['llama3.2-vision:11b'],
+                'text': ['qwen2.5:14b']
             },
             ContentType.GAMING: {
-                'primary': ['qwen2.5-coder:14b', 'deepseek-coder:6.7b', 'qwen2.5:14b'],
-                'vision': ['llama3.2-vision:11b', 'qwen2.5:14b'],
-                'text': ['qwen2.5-coder:14b', 'deepseek-coder:6.7b', 'qwen2.5:14b']
+                'primary': ['qwen2.5:14b', 'llama3.2-vision:11b'],
+                'vision': ['llama3.2-vision:11b'],
+                'text': ['qwen2.5:14b']
             },
             ContentType.EDUCATIONAL: {
-                'primary': ['qwen2.5:14b', 'llama3.2:8b', 'qwen2.5-coder:14b'],
-                'vision': ['llama3.2-vision:11b', 'qwen2.5:14b'],
-                'text': ['qwen2.5:14b', 'llama3.2:8b', 'deepseek-coder:6.7b']
+                'primary': ['qwen2.5:14b', 'llama3.2-vision:11b'],
+                'vision': ['llama3.2-vision:11b'],
+                'text': ['qwen2.5:14b']
             },
             ContentType.NARRATIVE: {
-                'primary': ['llama3.2:8b', 'qwen2.5:14b', 'llama4'],
-                'vision': ['llama3.2-vision:11b', 'qwen2.5:14b'],
-                'text': ['llama3.2:8b', 'qwen2.5:14b', 'llama4']
+                'primary': ['qwen2.5:14b', 'llama3.2-vision:11b'],
+                'vision': ['llama3.2-vision:11b'],
+                'text': ['qwen2.5:14b']
             },
             ContentType.DOCUMENTARY: {
-                'primary': ['qwen2.5:14b', 'llama3.2:8b', 'llama4'],
-                'vision': ['llama3.2-vision:11b', 'qwen2.5:14b'],
-                'text': ['qwen2.5:14b', 'llama3.2:8b', 'llama4']
+                'primary': ['qwen2.5:14b', 'llama3.2-vision:11b'],
+                'vision': ['llama3.2-vision:11b'],
+                'text': ['qwen2.5:14b']
             },
             ContentType.GENERAL: {
-                'primary': ['qwen2.5:14b', 'llama3.2:8b', 'llama3.2-vision:11b'],
-                'vision': ['llama3.2-vision:11b', 'qwen2.5:14b'],
-                'text': ['qwen2.5:14b', 'llama3.2:8b', 'deepseek-coder:6.7b']
+                'primary': ['qwen2.5:14b', 'llama3.2-vision:11b'],
+                'vision': ['llama3.2-vision:11b'],
+                'text': ['qwen2.5:14b']
             }
         }
         
@@ -71,7 +71,7 @@ class LLMIntegration(BaseProcessor, ComponentInterface):
         self.default_models = {
             'primary': 'qwen2.5:14b',
             'vision': 'llama3.2-vision:11b',
-            'text': 'llama3.2:8b'
+            'text': 'qwen2.5:14b'
         }
         
         # Prompt templates for different analysis types

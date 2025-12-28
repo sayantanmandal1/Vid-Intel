@@ -4,6 +4,7 @@ backend/__pycache__
 images
 labels
 test.txt
+
 train.txt
 backend/static_subtitles
 val.txt
