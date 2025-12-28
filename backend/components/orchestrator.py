@@ -224,8 +224,8 @@ class AnalysisOrchestrator(BaseProcessor):
             # Update progress: Content classified
             await self._update_progress(session_id, "Content classified", 10)
             
-            # Create segments using 5-minute intervals
-            segments = self._create_segments(metadata.duration, segment_length=300.0)
+            # Create segments dynamically based on video duration (10-20 segments)
+            segments = self._create_dynamic_segments(metadata.duration)
             logger.info(f"Created {len(segments)} segments for analysis")
             
             # Create analysis session
@@ -971,9 +971,58 @@ class AnalysisOrchestrator(BaseProcessor):
                     created_at=datetime.now()
                 )
     
+    def _create_dynamic_segments(self, duration: float) -> List[VideoSegment]:
+        """
+        Dynamically divide video into 10-20 segments based on duration
+        
+        Requirements addressed:
+        - Divide any video into exactly 10-20 parts for comprehensive analysis
+        - Ensure entire video is analyzed, not just first portion
+        
+        Args:
+            duration: Video duration in seconds
+            
+        Returns:
+            List of VideoSegment objects with proper time boundaries
+        """
+        # Determine optimal number of segments (10-20 based on duration)
+        if duration <= 300:  # 5 minutes or less
+            num_segments = 10
+        elif duration <= 600:  # 10 minutes or less
+            num_segments = 12
+        elif duration <= 1200:  # 20 minutes or less
+            num_segments = 15
+        elif duration <= 1800:  # 30 minutes or less
+            num_segments = 18
+        else:  # Longer videos
+            num_segments = 20
+        
+        # Calculate segment length
+        segment_length = duration / num_segments
+        
+        segments = []
+        current_time = 0.0
+        
+        logger.info(f"Creating {num_segments} segments for {duration:.2f}s video (segment length: {segment_length:.1f}s)")
+        
+        for i in range(num_segments):
+            end_time = min(current_time + segment_length, duration)
+            segment = VideoSegment(
+                start_time=current_time,
+                end_time=end_time,
+                duration=end_time - current_time
+            )
+            segments.append(segment)
+            
+            logger.debug(f"Created segment {i+1}/{num_segments}: {current_time:.1f}s - {end_time:.1f}s ({segment.duration:.1f}s)")
+            current_time = end_time
+        
+        logger.info(f"Successfully created {len(segments)} segments covering entire {duration:.2f}s video")
+        return segments
+    
     def _create_segments(self, duration: float, segment_length: float = 300.0) -> List[VideoSegment]:
         """
-        Divide video into segments (default 5-minute intervals)
+        Divide video into segments (default 5-minute intervals) - LEGACY METHOD
         
         Requirements addressed:
         - 1.2: Divide video into 5-minute segments for detailed analysis
@@ -1258,6 +1307,10 @@ class AnalysisOrchestrator(BaseProcessor):
                     
         except Exception as e:
             logger.warning(f"Failed to update progress: {e}")
+
+    async def health_check(self) -> bool:
+        """Check if orchestrator is healthy and ready"""
+        return self.is_initialized and self.status != ProcessingStatus.FAILED
 
     def get_session_status(self, session_id: str) -> Optional[Dict[str, Any]]:
         """

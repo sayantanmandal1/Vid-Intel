@@ -211,16 +211,18 @@ class ContentClassifier(BaseProcessor, ComponentInterface):
                 'description_style': 'artistic'
             },
             ContentType.GAMING: {
-                'focus_areas': ['gameplay_mechanics', 'player_actions', 'game_environment', 'ui_elements'],
-                'components': ['visual_extractor', 'audio_processor'],
+                'focus_areas': ['gameplay_mechanics', 'player_actions', 'game_environment', 'ui_elements', 'character_movements', 'game_objectives'],
+                'components': ['visual_extractor', 'audio_processor', 'llm_integration'],
                 'visual_priority': 'high',
-                'audio_priority': 'low',
-                'transcription_priority': 'low',
+                'audio_priority': 'medium',  # Gaming often has important audio cues
+                'transcription_priority': 'medium',  # Commentary and dialogue
                 'object_detection': True,
                 'scene_analysis': True,
                 'movement_analysis': True,
                 'music_analysis': False,
-                'description_style': 'technical'
+                'description_style': 'gaming',
+                'segment_focus': 'action_sequences',
+                'detail_level': 'high'
             },
             ContentType.EDUCATIONAL: {
                 'focus_areas': ['spoken_content', 'visual_aids', 'demonstrations', 'key_points'],
@@ -440,50 +442,94 @@ class ContentClassifier(BaseProcessor, ComponentInterface):
         return min(score, 1.0)
     
     def _score_gaming_content(self, visual_features: Dict, audio_features: Dict) -> float:
-        """Score likelihood of gaming content"""
+        """Score likelihood of gaming content - Enhanced for better detection"""
         score = 0.0
         
         # Gaming content often has high edge density (UI elements, sharp graphics)
         edge_density = visual_features.get('edge_density', 0)
         motion_estimate = visual_features.get('motion_estimate', 0) / 255.0
+        scene_complexity = visual_features.get('scene_complexity', 0)
+        color_variance = visual_features.get('color_variance', 0) / 255.0
         
-        # High edge density suggests UI elements and sharp graphics
-        if edge_density > 0.1:
+        # High edge density suggests UI elements and sharp graphics (strong indicator)
+        if edge_density > 0.15:
+            score += 0.5  # Increased weight
+        elif edge_density > 0.1:
+            score += 0.3
+        
+        # Gaming content typically has high scene complexity (detailed graphics)
+        if scene_complexity > 0.5:
             score += 0.4
+        elif scene_complexity > 0.3:
+            score += 0.2
+        
+        # High color variance suggests rich graphics and visual effects
+        if color_variance > 0.4:
+            score += 0.3
+        elif color_variance > 0.25:
+            score += 0.2
         
         # Moderate to high motion for gameplay
-        if 0.1 <= motion_estimate <= 0.5:
+        if 0.15 <= motion_estimate <= 0.6:
             score += 0.3
+        elif 0.1 <= motion_estimate <= 0.8:
+            score += 0.2
         
         # Gaming videos can be any length, but often longer
         duration = audio_features.get('duration', 0)
-        if duration > 300:  # Longer than 5 minutes
+        if duration > 600:  # Longer than 10 minutes (common for gaming)
+            score += 0.2
+        elif duration > 300:  # Longer than 5 minutes
             score += 0.1
+        
+        # Bonus for combination of high complexity + high edges (typical gaming signature)
+        if edge_density > 0.12 and scene_complexity > 0.4:
+            score += 0.3
         
         return min(score, 1.0)
     
     def _score_educational_content(self, visual_features: Dict, audio_features: Dict) -> float:
-        """Score likelihood of educational content"""
+        """Score likelihood of educational content - Reduced to avoid misclassification"""
         score = 0.0
         
         # Educational content often has lower motion (static presentations)
         motion_estimate = visual_features.get('motion_estimate', 0) / 255.0
         brightness = visual_features.get('average_brightness', 128) / 255.0
+        edge_density = visual_features.get('edge_density', 0)
+        scene_complexity = visual_features.get('scene_complexity', 0)
         
         # Lower motion suggests presentation-style content
-        if motion_estimate < 0.15:
+        if motion_estimate < 0.1:
             score += 0.3
+        elif motion_estimate < 0.15:
+            score += 0.1
         
         # Well-lit content (presentations, classrooms)
-        if brightness > 0.4:
+        if brightness > 0.5:
+            score += 0.2
+        elif brightness > 0.4:
+            score += 0.1
+        
+        # Educational content typically has lower scene complexity
+        if scene_complexity < 0.3:
             score += 0.2
         
-        # Educational videos are often longer
+        # Lower edge density (less UI elements than gaming)
+        if edge_density < 0.08:
+            score += 0.2
+        
+        # Educational videos are often longer but not as long as gaming
         duration = audio_features.get('duration', 0)
-        if duration > 600:  # Longer than 10 minutes
-            score += 0.2
+        if 600 <= duration <= 1800:  # 10-30 minutes (typical educational length)
+            score += 0.3
+        elif duration > 1800:  # Very long content
+            score += 0.1
         
-        return min(score, 1.0)
+        # Penalize if it looks like gaming (high complexity + high edges)
+        if edge_density > 0.12 and scene_complexity > 0.4:
+            score -= 0.4
+        
+        return max(0.0, min(score, 1.0))
     
     def _score_narrative_content(self, visual_features: Dict, audio_features: Dict) -> float:
         """Score likelihood of narrative content"""

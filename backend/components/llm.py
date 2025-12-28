@@ -171,7 +171,7 @@ Provide a detailed, engaging description focusing on:
 
 Description:""",
                 
-                ContentType.GAMING.value: """You are analyzing a gaming video segment. Emphasize gameplay mechanics, player actions, game environment, and interactive elements.
+                ContentType.GAMING.value: """You are analyzing a gaming video segment. Focus on gameplay mechanics, player actions, game environment, UI elements, and gaming-specific details.
 
 {segment_info}Video type: Gaming Content
 Duration: {duration:.1f} seconds
@@ -179,12 +179,16 @@ Duration: {duration:.1f} seconds
 Available data:
 {context_data}
 
-Provide a detailed description focusing on:
-1. Gameplay mechanics and controls
-2. Player actions and strategies
-3. Game environment and level design
-4. Interactive elements and UI
-5. Progress and achievements
+Provide a detailed, engaging description focusing on:
+1. Gameplay mechanics and player controls (movement, actions, interactions)
+2. Game environment and level design (setting, obstacles, objectives)
+3. Player actions and strategies (combat, exploration, puzzle-solving)
+4. UI elements and HUD (health bars, menus, indicators, text overlays)
+5. Game progression and achievements (score, level completion, unlocks)
+6. Visual style and graphics quality (art style, effects, animations)
+7. Audio cues and game sounds (if available)
+
+Use gaming terminology and focus on the interactive and strategic elements that make this gaming content engaging.
 
 Description:""",
                 

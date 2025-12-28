@@ -780,11 +780,13 @@ class VisualExtractor(BaseProcessor, ComponentInterface):
             return 0.5  # Default neutral score
     
     async def generate_description(self, analysis_results: Dict[str, Any], context: AnalysisContext) -> str:
-        """Generate comprehensive textual description of visual content"""
+        """Generate comprehensive textual description of visual content with gaming-specific enhancements"""
         try:
             description_parts = []
+            content_type = context.content_type if hasattr(context, 'content_type') else None
+            is_gaming = content_type and content_type.value == 'gaming'
             
-            # Describe objects
+            # Describe objects with gaming-specific focus
             objects = analysis_results.get('objects', [])
             if objects:
                 object_counts = {}
@@ -792,33 +794,63 @@ class VisualExtractor(BaseProcessor, ComponentInterface):
                     name = obj['class_name']
                     object_counts[name] = object_counts.get(name, 0) + 1
                 
-                object_desc = ", ".join([f"{count} {name}{'s' if count > 1 else ''}" 
-                                       for name, count in object_counts.items()])
-                description_parts.append(f"Objects detected: {object_desc}")
+                if is_gaming:
+                    # Gaming-specific object descriptions
+                    gaming_objects = ['person', 'car', 'truck', 'motorcycle', 'airplane', 'boat', 'weapon', 'building']
+                    game_elements = {k: v for k, v in object_counts.items() if k in gaming_objects}
+                    other_elements = {k: v for k, v in object_counts.items() if k not in gaming_objects}
+                    
+                    if game_elements:
+                        game_desc = ", ".join([f"{count} {name}{'s' if count > 1 else ''}" 
+                                             for name, count in game_elements.items()])
+                        description_parts.append(f"Game elements: {game_desc}")
+                    
+                    if other_elements:
+                        other_desc = ", ".join([f"{count} {name}{'s' if count > 1 else ''}" 
+                                              for name, count in other_elements.items()])
+                        description_parts.append(f"Other objects: {other_desc}")
+                else:
+                    object_desc = ", ".join([f"{count} {name}{'s' if count > 1 else ''}" 
+                                           for name, count in object_counts.items()])
+                    description_parts.append(f"Objects detected: {object_desc}")
             
-            # Describe scenes and lighting
+            # Describe scenes and lighting with gaming context
             scenes = analysis_results.get('scenes', [])
             if scenes:
                 scene_changes = sum(1 for scene in scenes if scene.get('is_scene_change', False))
                 if scene_changes > 0:
-                    description_parts.append(f"{scene_changes} scene changes detected")
+                    if is_gaming:
+                        if scene_changes > 5:
+                            description_parts.append("Frequent scene transitions (fast-paced gameplay)")
+                        else:
+                            description_parts.append(f"{scene_changes} scene changes (level/area transitions)")
+                    else:
+                        description_parts.append(f"{scene_changes} scene changes detected")
                 
                 avg_brightness = np.mean([scene.get('brightness', 128) for scene in scenes])
                 if avg_brightness < 80:
-                    description_parts.append("Dark/low-light scenes")
+                    description_parts.append("Dark/low-light environment" if is_gaming else "Dark/low-light scenes")
                 elif avg_brightness > 180:
-                    description_parts.append("Bright/well-lit scenes")
+                    description_parts.append("Bright/well-lit environment" if is_gaming else "Bright/well-lit scenes")
             
-            # Describe text elements
+            # Describe text elements with gaming UI focus
             text_elements = analysis_results.get('text_elements', [])
             if text_elements:
                 unique_texts = set(elem['text'] for elem in text_elements)
-                if len(unique_texts) <= 3:
-                    description_parts.append(f"Text elements: {', '.join(list(unique_texts))}")
+                if is_gaming:
+                    if len(unique_texts) > 5:
+                        description_parts.append("Rich UI with multiple text elements (HUD, menus, indicators)")
+                    elif len(unique_texts) > 2:
+                        description_parts.append("Game UI elements with text overlays")
+                    else:
+                        description_parts.append(f"UI text: {', '.join(list(unique_texts))}")
                 else:
-                    description_parts.append(f"Multiple text elements detected ({len(unique_texts)} unique)")
+                    if len(unique_texts) <= 3:
+                        description_parts.append(f"Text elements: {', '.join(list(unique_texts))}")
+                    else:
+                        description_parts.append(f"Multiple text elements detected ({len(unique_texts)} unique)")
             
-            # Describe movement with enhanced details
+            # Describe movement with gaming-specific analysis
             movement = analysis_results.get('movement_analysis', {})
             if movement.get('movement_detected', False):
                 intensity = movement.get('movement_intensity', 0)
@@ -826,28 +858,155 @@ class VisualExtractor(BaseProcessor, ComponentInterface):
                 object_movement = movement.get('object_movement', 'none')
                 
                 movement_desc = []
-                if camera_movement != 'static':
-                    if camera_movement == 'horizontal_pan':
-                        movement_desc.append("horizontal camera panning")
-                    elif camera_movement == 'vertical_tilt':
-                        movement_desc.append("vertical camera tilting")
-                    elif camera_movement == 'complex':
-                        movement_desc.append("complex camera movement")
-                
-                if object_movement != 'none':
-                    movement_desc.append(f"{object_movement} object movement")
+                if is_gaming:
+                    if camera_movement != 'static':
+                        if camera_movement == 'horizontal_pan':
+                            movement_desc.append("horizontal camera control/panning")
+                        elif camera_movement == 'vertical_tilt':
+                            movement_desc.append("vertical camera movement/aiming")
+                        elif camera_movement == 'complex':
+                            movement_desc.append("dynamic camera control (3D movement)")
+                    
+                    if object_movement != 'none':
+                        if object_movement == 'fast':
+                            movement_desc.append("fast-paced character/object movement")
+                        elif object_movement == 'moderate':
+                            movement_desc.append("moderate character movement")
+                        else:
+                            movement_desc.append(f"{object_movement} gameplay movement")
+                    
+                    if intensity > 0.5:
+                        movement_desc.append("high-intensity action sequences")
+                    elif intensity > 0.3:
+                        movement_desc.append("active gameplay")
+                    elif intensity > 0.1:
+                        movement_desc.append("moderate gameplay activity")
+                else:
+                    if camera_movement != 'static':
+                        if camera_movement == 'horizontal_pan':
+                            movement_desc.append("horizontal camera panning")
+                        elif camera_movement == 'vertical_tilt':
+                            movement_desc.append("vertical camera tilting")
+                        elif camera_movement == 'complex':
+                            movement_desc.append("complex camera movement")
+                    
+                    if object_movement != 'none':
+                        movement_desc.append(f"{object_movement} object movement")
+                    
+                    if intensity > 0.3:
+                        movement_desc.append("High movement/action")
+                    elif intensity > 0.1:
+                        movement_desc.append("Moderate movement")
                 
                 if movement_desc:
                     description_parts.append(", ".join(movement_desc))
-                elif intensity > 0.3:
-                    description_parts.append("High movement/action")
-                elif intensity > 0.1:
-                    description_parts.append("Moderate movement")
             else:
-                description_parts.append("Minimal movement")
+                if is_gaming:
+                    description_parts.append("Static/menu screen or cutscene")
+                else:
+                    description_parts.append("Minimal movement")
             
-            # Describe visual style with enhanced details
+            # Describe visual style with gaming-specific details
             style = analysis_results.get('visual_style', {})
+            if style:
+                style_desc = []
+                
+                lighting = style.get('lighting', 'unknown')
+                if lighting != 'unknown':
+                    if is_gaming:
+                        lighting_map = {
+                            'natural': 'realistic lighting',
+                            'artificial': 'game lighting effects',
+                            'dramatic': 'cinematic lighting',
+                            'soft': 'ambient lighting'
+                        }
+                        style_desc.append(lighting_map.get(lighting, f"{lighting} lighting"))
+                    else:
+                        style_desc.append(f"{lighting} lighting")
+                
+                contrast = style.get('contrast_level', 'medium')
+                if contrast != 'medium':
+                    if is_gaming and contrast == 'high':
+                        style_desc.append("high contrast graphics (enhanced visibility)")
+                    else:
+                        style_desc.append(f"{contrast} contrast")
+                
+                saturation = style.get('saturation_level', 'balanced')
+                if saturation != 'balanced':
+                    if is_gaming:
+                        saturation_map = {
+                            'vibrant': 'vibrant game colors',
+                            'muted': 'realistic color palette',
+                            'desaturated': 'stylized/filtered colors'
+                        }
+                        style_desc.append(saturation_map.get(saturation, f"{saturation} colors"))
+                    else:
+                        style_desc.append(f"{saturation} colors")
+                
+                complexity = style.get('visual_complexity', 'medium')
+                if complexity != 'medium':
+                    if is_gaming:
+                        complexity_map = {
+                            'high': 'detailed graphics with rich visual elements',
+                            'low': 'simplified/stylized graphics',
+                            'very_high': 'highly detailed AAA game graphics'
+                        }
+                        style_desc.append(complexity_map.get(complexity, f"{complexity} visual complexity"))
+                    else:
+                        style_desc.append(f"{complexity} visual complexity")
+                
+                aesthetic_score = style.get('aesthetic_score', 0.0)
+                if is_gaming:
+                    if aesthetic_score > 0.8:
+                        style_desc.append("high-quality game graphics")
+                    elif aesthetic_score > 0.6:
+                        style_desc.append("good visual quality")
+                    elif aesthetic_score < 0.3:
+                        style_desc.append("basic/indie game graphics")
+                else:
+                    if aesthetic_score > 0.7:
+                        style_desc.append("high aesthetic quality")
+                    elif aesthetic_score < 0.3:
+                        style_desc.append("simple aesthetic")
+                
+                if style_desc:
+                    description_parts.append(", ".join(style_desc))
+            
+            # Add gaming-specific context if detected
+            if is_gaming and objects:
+                # Try to infer game genre based on objects
+                vehicle_objects = ['car', 'truck', 'motorcycle', 'airplane', 'boat']
+                person_objects = ['person']
+                
+                vehicles = sum(1 for obj in objects if obj['class_name'] in vehicle_objects)
+                people = sum(1 for obj in objects if obj['class_name'] in person_objects)
+                
+                if vehicles > people and vehicles > 2:
+                    description_parts.append("Vehicle-focused gameplay (racing/driving game)")
+                elif people > 3:
+                    description_parts.append("Character-focused gameplay (action/adventure game)")
+            
+            # Add color palette information
+            color_palette = style.get('color_palette', [])
+            if color_palette and len(color_palette) > 0:
+                dominant_colors = len([c for c in color_palette if c])
+                if dominant_colors > 0:
+                    if is_gaming:
+                        description_parts.append(f"{dominant_colors}-color game palette")
+                    else:
+                        description_parts.append(f"{dominant_colors}-color palette")
+            
+            final_description = ". ".join(description_parts) if description_parts else "Visual analysis completed"
+            
+            # Add gaming-specific summary if applicable
+            if is_gaming and description_parts:
+                final_description = f"Gaming content: {final_description}"
+            
+            return final_description
+            
+        except Exception as e:
+            logger.error(f"Description generation failed: {e}")
+            return "Visual content processed"
             if style:
                 style_desc = []
                 
