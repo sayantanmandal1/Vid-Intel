@@ -24,7 +24,7 @@ backend/.env
 backend/venv/
 backend/*.pkl
 backend/*.pth
-
+backend/vidintel.db
 # System files
 .DS_Store
 *.log
